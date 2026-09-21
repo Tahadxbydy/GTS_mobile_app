@@ -57,21 +57,36 @@ class AudioDirectoryService {
     return fallbackDir;
   }
 
-  /// Sanitizes track titles to prevent invalid file path characters
-  String sanitizeFileName(String title) {
+  /// Sanitizes track titles and attaches the correct dynamic stream extension (.m4a, .webm, etc.)
+  String sanitizeFileName(String title, {String extension = 'm4a'}) {
+    // Standardize extension formatting (strip leading dot if provided)
+    final cleanExt = extension.startsWith('.')
+        ? extension.substring(1)
+        : extension;
+
     if (title.trim().isEmpty) {
-      return 'audio_${DateTime.now().millisecondsSinceEpoch}.mp3';
+      return 'audio_${DateTime.now().millisecondsSinceEpoch}.$cleanExt';
     }
 
     // Replace illegal filesystem characters (\ / : * ? " < > |) with underscores
-    final cleaned = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
-    return cleaned.endsWith('.mp3') ? cleaned : '$cleaned.mp3';
+    var cleaned = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+
+    // Strip trailing extensions if they exist, then append target container extension
+    cleaned = cleaned.replaceAll(
+      RegExp(r'\.(mp3|m4a|webm|mp4)$', caseSensitive: false),
+      '',
+    );
+
+    return '$cleaned.$cleanExt';
   }
 
-  /// Resolves a full, safe File object inside the Music directory
-  Future<File> getTargetAudioFile(String rawTitle) async {
+  /// Resolves a full, safe File object inside the Music directory using the stream extension
+  Future<File> getTargetAudioFile(
+    String rawTitle, {
+    String extension = 'm4a',
+  }) async {
     final directory = await getMusicDirectory();
-    final fileName = sanitizeFileName(rawTitle);
+    final fileName = sanitizeFileName(rawTitle, extension: extension);
     return File('${directory.path}/$fileName');
   }
 
